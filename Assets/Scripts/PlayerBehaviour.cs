@@ -19,10 +19,6 @@ public class PlayerBehaviour : MonoBehaviour
     [Header("Audio Settings")]
     public AudioClip slenderNoise;
     public AudioClip cameraNoise;
-
-    [Header("UI Settings")]
-    public GameObject inGameMenuUI;
-    public GameObject finishedGameUI;
     public bool paused;
 
     private Light flashlightSpotlight;
