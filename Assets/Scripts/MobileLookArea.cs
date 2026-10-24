@@ -12,6 +12,7 @@ public class MobileLookArea : MonoBehaviour,
     [SerializeField] private FirstPersonController player;
     [SerializeField] private PlayerBehaviour playerBehaviour;
     [SerializeField] private AnomalyDetector anomalyDetector;
+    [SerializeField] private WeaponMotion weaponMotion;
 
     [Header("Double Tap Settings")]
     [SerializeField] private float doubleTapTime = 0.3f;
@@ -31,7 +32,6 @@ public class MobileLookArea : MonoBehaviour,
         pointerDownPosition = eventData.position;
         movedFinger = false;
 
-        // Holding the look area also attempts anomaly absorption.
         if (anomalyDetector != null)
             anomalyDetector.StartMobileAbsorption();
     }
@@ -48,9 +48,11 @@ public class MobileLookArea : MonoBehaviour,
             movedFinger = true;
         }
 
-        // Preserve normal camera look.
         if (player != null)
             player.AddMobileLookInput(eventData.delta);
+
+        if (weaponMotion != null)
+            weaponMotion.AddMobileLookInput(eventData.delta);
     }
 
     public void OnPointerUp(PointerEventData eventData)
@@ -63,11 +65,9 @@ public class MobileLookArea : MonoBehaviour,
             eventData.position
         );
 
-        // Always stop absorption when the finger is released.
         if (anomalyDetector != null)
             anomalyDetector.StopMobileAbsorption();
 
-        // Only a stationary tap can count toward a double-tap.
         if (!movedFinger && movement <= tapMovementThreshold)
         {
             float currentTime = Time.unscaledTime;

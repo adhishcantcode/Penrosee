@@ -5900,6 +5900,7 @@ MonoBehaviour:
   player: {fileID: 114471482116901907}
   playerBehaviour: {fileID: 114495001831369807}
   anomalyDetector: {fileID: 143482454414497542}
+  weaponMotion: {fileID: 2089114779}
   doubleTapTime: 0.3
   tapMovementThreshold: 20
 --- !u!114 &431113636
@@ -29804,6 +29805,8 @@ MonoBehaviour:
   maxSwayAngle: 5
   inertiaAmount: 0.035
   strafeTilt: 2
+  mobileLookSensitivity: 0.08
+  mobileLookSmoothing: 12
   walkBobFrequency: 7
   walkBobAmount: 0.025
   walkSideAmount: 0.012
@@ -30405,6 +30408,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5affb43291d754e4a9ab471bf9cdfc6a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FPSCounter
+  fpsLimit: 60
   updateInterval: 0.5
 --- !u!1 &2125847466 stripped
 GameObject:

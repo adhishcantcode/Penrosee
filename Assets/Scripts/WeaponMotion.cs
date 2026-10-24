@@ -15,6 +15,13 @@ public class WeaponMotion : MonoBehaviour
     public float inertiaAmount = 0.035f;
     public float strafeTilt = 2f;
 
+    [Header("Mobile Look")]
+    public float mobileLookSensitivity = 0.08f;
+    public float mobileLookSmoothing = 12f;
+
+    private Vector2 mobileLookInput;
+    private Vector2 smoothedMobileLook;
+
     [Header("Walking")]
     public float walkBobFrequency = 6.5f;
     public float walkBobAmount = 0.018f;
@@ -64,6 +71,7 @@ public class WeaponMotion : MonoBehaviour
 
     private float movementWeight;
     private float movementWeightVelocity;
+
     private float sprintWeight;
     private float sprintWeightVelocity;
 
@@ -86,6 +94,12 @@ public class WeaponMotion : MonoBehaviour
             wasGrounded = controller.isGrounded;
     }
 
+    // Called by MobileLookArea when the player drags a finger.
+    public void AddMobileLookInput(Vector2 delta)
+    {
+        mobileLookInput += delta;
+    }
+
     private void LateUpdate()
     {
         float dt = Time.deltaTime;
@@ -93,16 +107,38 @@ public class WeaponMotion : MonoBehaviour
         if (dt <= 0f || playerCamera == null)
             return;
 
-        // Mouse input creates physical-looking weapon lag.
-        float mouseX = Input.GetAxis("Mouse X");
-        float mouseY = Input.GetAxis("Mouse Y");
+        float mouseX;
+        float mouseY;
+
+#if UNITY_ANDROID || UNITY_IOS
+        // Smooth incoming touch deltas to avoid abrupt weapon movement.
+        float lookBlend =
+            1f - Mathf.Exp(-mobileLookSmoothing * dt);
+
+        smoothedMobileLook = Vector2.Lerp(
+            smoothedMobileLook,
+            mobileLookInput,
+            lookBlend
+        );
+
+        mouseX = smoothedMobileLook.x * mobileLookSensitivity;
+        mouseY = smoothedMobileLook.y * mobileLookSensitivity;
+
+        // Each touch delta is consumed only once.
+        mobileLookInput = Vector2.zero;
+#else
+        mouseX = Input.GetAxis("Mouse X");
+        mouseY = Input.GetAxis("Mouse Y");
+#endif
 
         Vector3 velocity = controller != null
             ? controller.velocity
             : Vector3.zero;
 
         float horizontalSpeed = new Vector2(
-            velocity.x, velocity.z).magnitude;
+            velocity.x,
+            velocity.z
+        ).magnitude;
 
         bool grounded = controller == null || controller.isGrounded;
         bool moving = grounded && horizontalSpeed > 0.15f;
@@ -110,14 +146,14 @@ public class WeaponMotion : MonoBehaviour
 
         float speedFactor = Mathf.Clamp01(horizontalSpeed / 4f);
 
-        // Smooth transitions prevent sudden changes in animation.
         movementWeight = Mathf.SmoothDamp(
             movementWeight,
             moving ? 1f : 0f,
             ref movementWeightVelocity,
-            1f / transitionSpeed,
+            1f / Mathf.Max(transitionSpeed, 0.01f),
             Mathf.Infinity,
-            dt);
+            dt
+        );
 
         sprintWeight = Mathf.SmoothDamp(
             sprintWeight,
@@ -125,9 +161,10 @@ public class WeaponMotion : MonoBehaviour
             ref sprintWeightVelocity,
             0.22f,
             Mathf.Infinity,
-            dt);
+            dt
+        );
 
-        // Weapon lags opposite to the direction of mouse movement.
+        // Weapon sway from mouse or mobile touch-look input.
         Vector3 sway = new Vector3(
             -mouseY * swayAmount,
             mouseX * swayAmount,
@@ -138,24 +175,35 @@ public class WeaponMotion : MonoBehaviour
         sway.y = Mathf.Clamp(sway.y, -maxSwayAngle, maxSwayAngle);
         sway.z = Mathf.Clamp(sway.z, -maxSwayAngle, maxSwayAngle);
 
-        // Subtle follow-through from the weapon's physical weight.
         Vector3 inertiaPosition = new Vector3(
             -mouseX * inertiaAmount,
             -mouseY * inertiaAmount,
             0f
         );
 
-        // Walking and sprinting have different movement rhythms.
         float frequency = Mathf.Lerp(
-            walkBobFrequency, sprintBobFrequency, sprintWeight);
+            walkBobFrequency,
+            sprintBobFrequency,
+            sprintWeight
+        );
 
         float bobAmount = Mathf.Lerp(
-            walkBobAmount, sprintBobAmount, sprintWeight);
+            walkBobAmount,
+            sprintBobAmount,
+            sprintWeight
+        );
 
         float sideAmount = Mathf.Lerp(
-            walkSideAmount, sprintSideAmount, sprintWeight);
+            walkSideAmount,
+            sprintSideAmount,
+            sprintWeight
+        );
 
-        bobTimer += dt * frequency * Mathf.Lerp(0.3f, 1f, speedFactor);
+        bobTimer += dt * frequency * Mathf.Lerp(
+            0.3f,
+            1f,
+            speedFactor
+        );
 
         Vector3 bob = Vector3.zero;
 
@@ -163,12 +211,10 @@ public class WeaponMotion : MonoBehaviour
         {
             bob.x = Mathf.Cos(bobTimer * 0.5f) * sideAmount;
             bob.y = Mathf.Sin(bobTimer) * bobAmount;
-
-            // A little forward/back motion gives footsteps more weight.
             bob.z = Mathf.Cos(bobTimer) * bobAmount * 0.35f;
         }
 
-        // Breathing continues even while standing still.
+        // Idle breathing.
         breathingTimer += dt * breathingFrequency;
 
         Vector3 breathing = new Vector3(
@@ -177,7 +223,7 @@ public class WeaponMotion : MonoBehaviour
             Mathf.Cos(breathingTimer) * breathingAmount * 0.25f
         );
 
-        // Small irregular idle movement: avoid a perfectly static weapon.
+        // Subtle idle movement.
         idleTimer += dt;
 
         Vector3 idleSway = new Vector3(
@@ -186,16 +232,18 @@ public class WeaponMotion : MonoBehaviour
             Mathf.Sin(idleTimer * 0.51f) * idleSwayAmount * 0.5f
         );
 
-        // Sprinting lowers the weapon and rotates it slightly.
         Vector3 sprintPosition = new Vector3(
-            0f, -sprintDrop * sprintWeight, 0f);
+            0f,
+            -sprintDrop * sprintWeight,
+            0f
+        );
 
         Vector3 sprintRotation = new Vector3(
             sprintTilt * sprintWeight,
             0f,
-            -sprintTilt * sprintWeight);
+            -sprintTilt * sprintWeight
+        );
 
-        // Lean slightly in the direction of lateral movement.
         float localStrafe = player != null
             ? player.InverseTransformDirection(velocity).x
             : 0f;
@@ -206,21 +254,25 @@ public class WeaponMotion : MonoBehaviour
             -localStrafe * strafeTilt * 0.25f
         );
 
-        // Dip slightly when accelerating or coming to a stop.
+        // Acceleration and stopping transitions.
         float acceleration = (horizontalSpeed - previousSpeed) /
                              Mathf.Max(dt, 0.001f);
 
         float accelerationEffect = Mathf.Clamp(
-            -acceleration * accelerationDip, -0.025f, 0.025f);
+            -acceleration * accelerationDip,
+            -0.025f,
+            0.025f
+        );
 
         previousSpeed = horizontalSpeed;
 
         Vector3 transitionPosition = new Vector3(
             0f,
             accelerationEffect * movementWeight,
-            0f);
+            0f
+        );
 
-        // Detect landing and smoothly recover from the impact.
+        // Landing detection.
         if (controller != null)
         {
             if (!wasGrounded && grounded)
@@ -230,21 +282,31 @@ public class WeaponMotion : MonoBehaviour
         }
 
         landingOffset = Mathf.MoveTowards(
-            landingOffset, 0f, landingRecovery * dt);
+            landingOffset,
+            0f,
+            landingRecovery * dt
+        );
 
         Vector3 landingPosition = new Vector3(
-            0f, landingOffset, 0f);
+            0f,
+            landingOffset,
+            0f
+        );
 
-        // Recoil smoothly returns to the weapon's resting pose.
+        // Recoil recovery.
         currentRecoil = Vector3.Lerp(
-            currentRecoil, targetRecoil,
-            1f - Mathf.Exp(-recoilRecovery * dt));
+            currentRecoil,
+            targetRecoil,
+            1f - Mathf.Exp(-recoilRecovery * dt)
+        );
 
         targetRecoil = Vector3.Lerp(
-            targetRecoil, Vector3.zero,
-            1f - Mathf.Exp(-recoilRecovery * dt));
+            targetRecoil,
+            Vector3.zero,
+            1f - Mathf.Exp(-recoilRecovery * dt)
+        );
 
-        // Combine position effects.
+        // Combine all position effects.
         Vector3 targetPosition =
             initialPosition +
             bob +
@@ -255,7 +317,7 @@ public class WeaponMotion : MonoBehaviour
             transitionPosition +
             landingPosition;
 
-        // Combine rotation effects.
+        // Combine all rotation effects.
         Quaternion targetRotation =
             initialRotation *
             Quaternion.Euler(
@@ -265,24 +327,22 @@ public class WeaponMotion : MonoBehaviour
                 currentRecoil
             );
 
-        // SmoothDamp provides more natural settling than constant Lerp.
-        Vector3 positionDifference = targetPosition - transform.localPosition;
-
         transform.localPosition = Vector3.SmoothDamp(
             transform.localPosition,
             targetPosition,
             ref positionVelocity,
             1f / Mathf.Max(positionSmoothness, 0.01f),
             Mathf.Infinity,
-            dt);
+            dt
+        );
 
         transform.localRotation = Quaternion.Slerp(
             transform.localRotation,
             targetRotation,
-            1f - Mathf.Exp(-rotationSmoothness * dt));
+            1f - Mathf.Exp(-rotationSmoothness * dt)
+        );
     }
 
-    // Call this from your weapon firing script.
     public void AddRecoil(float kickX, float kickY)
     {
         targetRecoil += new Vector3(
@@ -296,10 +356,16 @@ public class WeaponMotion : MonoBehaviour
     {
         currentRecoil = Vector3.zero;
         targetRecoil = Vector3.zero;
+
         currentPositionOffset = Vector3.zero;
         currentRotationOffset = Vector3.zero;
+
         positionVelocity = Vector3.zero;
         rotationVelocity = Vector3.zero;
+
+        mobileLookInput = Vector2.zero;
+        smoothedMobileLook = Vector2.zero;
+
         landingOffset = 0f;
 
         transform.localPosition = initialPosition;
