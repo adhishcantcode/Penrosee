@@ -174,11 +174,11 @@ QualitySettings:
     PS4: 2
     PSM: 2
     PSP2: 1
-    Standalone: 0
+    Standalone: 2
     Tizen: 1
     WebGL: 0
     WiiU: 2
-    Windows Store Apps: 0
+    Windows Store Apps: 2
     XboxOne: 2
     iPhone: 1
     tvOS: 1
