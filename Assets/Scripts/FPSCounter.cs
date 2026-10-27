@@ -24,6 +24,8 @@ public class FPSCounter : MonoBehaviour
 
     private void Awake()
     {
+        Debug.Log("Device Name: " + SystemInfo.deviceName);
+        Debug.Log("Machine Name: " + System.Environment.MachineName);
         QualitySettings.vSyncCount = 0;
 
         Application.targetFrameRate = fpsLimit == FPSLimit.Uncapped
