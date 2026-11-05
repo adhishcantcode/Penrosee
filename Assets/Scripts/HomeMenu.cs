@@ -10,6 +10,8 @@ public class HomeMenu : MonoBehaviour
     [Header("UI GameObjects")]
     [SerializeField] private GameObject gameScreen;
     [SerializeField] private GameObject settingsScreen;
+    public GameObject SettingoN;
+
 
     // Play Button
     public void PlayGame()
@@ -17,6 +19,12 @@ public class HomeMenu : MonoBehaviour
         SceneManager.LoadScene(gameSceneName);
     }
 
+
+    public void CloseSetting()
+    {
+        settingsScreen.SetActive(false);
+        gameScreen.SetActive(true);
+    }
     // Settings Button
     public void OpenSettings()
     {
