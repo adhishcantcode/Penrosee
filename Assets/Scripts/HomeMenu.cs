@@ -11,6 +11,8 @@ public class HomeMenu : MonoBehaviour
     [SerializeField] private GameObject gameScreen;
     [SerializeField] private GameObject settingsScreen;
     public GameObject SettingoN;
+    public GameObject SetiingMenu;
+    
 
 
     // Play Button
